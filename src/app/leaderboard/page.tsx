@@ -1,130 +1,184 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BottomNav from "@/components/BottomNav";
-import EmptyState from "@/components/EmptyState";
-import { Trophy } from "lucide-react";
+import { Trophy, TrendingUp, Flame, Target } from "lucide-react";
 
-interface LeaderboardEntry {
+interface LeaderboardUser {
   rank: number;
-  userId: string;
+  id: string;
   username: string;
-  firstName?: string;
-  lastName?: string;
-  reputationScore: number;
-  wagersWon: number;
+  name: string;
+  initials: string;
   totalWagers: number;
+  wagersWon: number;
+  wagersLost: number;
   winRate: number;
+  reputationScore: number;
 }
 
+const SORT_TABS = [
+  { key: "reputation", label: "Reputation", icon: Trophy },
+  { key: "winRate", label: "Win Rate", icon: Target },
+  { key: "totalWagers", label: "Most Active", icon: Flame },
+];
+
+const RANK_COLORS = ["", "text-[#d97706]", "text-[#94a3b8]", "text-[#b45309]"];
+
 export default function LeaderboardPage() {
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [users, setUsers] = useState<LeaderboardUser[]>([]);
+  const [sort, setSort] = useState("reputation");
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<"all" | "month" | "week">("all");
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/leaderboard?period=${period}`)
-      .then((r) => (r.ok ? r.json() : { entries: [] }))
-      .then((d) => setEntries(d.entries || []))
-      .catch(() => {})
+    fetch(`/api/leaderboard?sort=${sort}`)
+      .then((res) => (res.ok ? res.json() : { leaderboard: [] }))
+      .then((data) => setUsers(data.leaderboard || []))
       .finally(() => setLoading(false));
-  }, [period]);
+  }, [sort]);
 
   return (
     <>
       <Navbar />
       <main className="container-page py-8 pb-24 md:pb-8">
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold">Leaderboard</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">
-            Top performers ranked by reputation and win rate.
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-headline">Leaderboard</h1>
+          <p className="text-sm text-[var(--text-muted)] mt-1">
+            Top predictors ranked by performance
           </p>
         </div>
 
-        {/* Period tabs */}
-        <div className="inline-flex gap-1 p-1 bg-[var(--surface)] border border-[var(--border)] rounded-md mb-4">
-          {(["all", "month", "week"] as const).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`text-xs px-3 py-1.5 rounded transition-colors ${
-                period === p
-                  ? "bg-[var(--surface-2)] text-[var(--text)]"
-                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
-              }`}
-            >
-              {p === "all"
-                ? "All time"
-                : p === "month"
-                  ? "This month"
-                  : "This week"}
-            </button>
-          ))}
+        {/* Sort tabs */}
+        <div className="flex gap-1 mb-6 bg-[var(--surface-2)] p-1 rounded-lg w-fit">
+          {SORT_TABS.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setSort(tab.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  sort === tab.key
+                    ? "bg-white text-[var(--text)] shadow-[var(--shadow-xs)]"
+                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                }`}
+              >
+                <Icon size={14} />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
-        {loading ? (
-          <div className="card p-0 overflow-hidden">
-            <ul className="divide-y divide-[var(--border)]">
-              {[...Array(8)].map((_, i) => (
-                <li key={i} className="flex items-center gap-3 p-3">
-                  <div className="shimmer w-6 h-4 rounded" />
-                  <div className="shimmer w-9 h-9 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <div className="shimmer h-3 w-1/3 rounded" />
-                    <div className="shimmer h-3 w-1/5 rounded" />
+        {/* Top 3 podium (desktop) */}
+        {!loading && users.length >= 3 && (
+          <div className="hidden md:grid grid-cols-3 gap-4 mb-8">
+            {[users[1], users[0], users[2]].map((u, i) => {
+              const podiumOrder = [2, 1, 3];
+              const heights = ["h-28", "h-36", "h-24"];
+              const bgColors = [
+                "bg-[var(--surface-2)]",
+                "bg-[var(--accent-soft)]",
+                "bg-[var(--surface-2)]",
+              ];
+              return (
+                <div key={u.id} className="flex flex-col items-center">
+                  <span className="h-10 w-10 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center text-sm font-semibold mb-2">
+                    {u.initials}
+                  </span>
+                  <div className="text-sm font-semibold">{u.name}</div>
+                  <div className="text-[11px] text-[var(--text-dim)] mb-2">
+                    @{u.username}
                   </div>
-                  <div className="shimmer h-4 w-12 rounded" />
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : entries.length === 0 ? (
-          <EmptyState
-            icon={Trophy}
-            title="No rankings yet"
-            description="Rankings will appear once enough wagers have been settled."
-          />
-        ) : (
-          <div className="card p-0 overflow-hidden">
-            <ul className="divide-y divide-[var(--border)]">
-              {entries.map((e) => {
-                const name =
-                  [e.firstName, e.lastName].filter(Boolean).join(" ") ||
-                  e.username;
-                return (
-                  <li
-                    key={e.userId}
-                    className="flex items-center gap-3 p-3 hover:bg-[var(--surface-2)] transition-colors"
+                  <div className="flex items-center gap-3 text-xs mb-3">
+                    <span className="text-[var(--gain)] font-medium">
+                      {u.winRate}% wins
+                    </span>
+                    <span className="text-[var(--text-muted)]">
+                      Rep {u.reputationScore}
+                    </span>
+                  </div>
+                  <div
+                    className={`w-full ${heights[i]} ${bgColors[i]} rounded-t-lg flex items-end justify-center pb-3`}
                   >
-                    <div className="w-6 text-center text-sm font-semibold tabular-nums text-[var(--text-muted)]">
-                      {e.rank}
-                    </div>
-                    <div className="w-9 h-9 rounded-full bg-[var(--surface-3)] flex items-center justify-center text-xs font-semibold text-[var(--text-muted)] shrink-0">
-                      {(e.username[0] || "?").toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{name}</div>
-                      <div className="text-xs text-[var(--text-muted)]">
-                        @{e.username} · {e.wagersWon}/{e.totalWagers} won
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-semibold tabular-nums">
-                        {e.reputationScore.toFixed(0)}
-                      </div>
-                      <div className="text-xs text-[var(--text-dim)]">
-                        {e.winRate.toFixed(0)}% wr
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                    <span
+                      className={`text-2xl font-bold ${RANK_COLORS[podiumOrder[i]]}`}
+                    >
+                      #{podiumOrder[i]}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
+
+        {/* Table */}
+        <div className="card overflow-hidden">
+          <div className="hidden sm:grid grid-cols-[48px_1fr_80px_80px_80px_80px] gap-4 px-5 py-3 border-b border-[var(--border)] text-xs text-[var(--text-dim)] font-medium">
+            <span>Rank</span>
+            <span>Trader</span>
+            <span className="text-right">Win Rate</span>
+            <span className="text-right">Rep</span>
+            <span className="text-right">Won</span>
+            <span className="text-right">Total</span>
+          </div>
+          {loading ? (
+            <div className="space-y-0">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="px-5 py-4 border-b border-[var(--border)]"
+                >
+                  <div className="h-5 shimmer rounded w-full" />
+                </div>
+              ))}
+            </div>
+          ) : users.length === 0 ? (
+            <div className="px-5 py-12 text-center text-sm text-[var(--text-muted)]">
+              No traders with completed wagers yet.
+            </div>
+          ) : (
+            users.map((u) => (
+              <div
+                key={u.id}
+                className="grid grid-cols-[48px_1fr_80px_80px] sm:grid-cols-[48px_1fr_80px_80px_80px_80px] gap-4 px-5 py-3 items-center border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface-2)] transition-colors"
+              >
+                <span
+                  className={`text-sm font-bold tabular-nums ${u.rank <= 3 ? RANK_COLORS[u.rank] : "text-[var(--text-dim)]"}`}
+                >
+                  #{u.rank}
+                </span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="h-8 w-8 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center text-xs font-semibold shrink-0">
+                    {u.initials}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{u.name}</div>
+                    <div className="text-[11px] text-[var(--text-dim)]">
+                      @{u.username}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-sm text-right tabular-nums font-medium text-[var(--gain)]">
+                  {u.winRate}%
+                </span>
+                <span className="text-sm text-right tabular-nums">
+                  {u.reputationScore}
+                </span>
+                <span className="text-sm text-right tabular-nums text-[var(--gain)] hidden sm:block">
+                  {u.wagersWon}
+                </span>
+                <span className="text-sm text-right tabular-nums text-[var(--text-muted)] hidden sm:block">
+                  {u.totalWagers}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
       </main>
       <Footer />
       <BottomNav />

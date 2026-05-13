@@ -40,7 +40,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={jakarta.variable}>
-      <body className={`${jakarta.className} antialiased`}>{children}</body>
+      <body
+        className={`${jakarta.className} antialiased min-h-screen flex flex-col`}
+      >
+        {children}
+      </body>
     </html>
   );
 }

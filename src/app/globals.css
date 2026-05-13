@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+main {
+  flex: 1;
+}
+
 :root {
   /* ── Surfaces ────────────────────────────────── */
   --bg: #ffffff;
@@ -33,6 +37,15 @@
   --danger-soft: rgba(220, 38, 38, 0.06);
   --warning: #d97706;
   --warning-soft: rgba(217, 119, 6, 0.06);
+
+  /* ── Trading ────────────────────────────────── */
+  --gain: #059669;
+  --gain-soft: rgba(5, 150, 105, 0.08);
+  --loss: #ef4444;
+  --loss-soft: rgba(239, 68, 68, 0.06);
+  --yes: #059669;
+  --no: #ef4444;
+  --ticker-bg: #f0fdf4;
 
   /* ── Shape ──────────────────────────────────── */
   --radius-sm: 6px;
@@ -399,4 +412,162 @@ select:where(.input) {
 }
 .gradient-border {
   border: 1px solid var(--border);
+}
+
+/* ─── Odds Bar ───────────────────────────────── */
+
+:where(.odds-bar) {
+  display: flex;
+  height: 8px;
+  border-radius: 99px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+:where(.odds-bar-yes) {
+  background: var(--yes);
+  transition: width 400ms var(--ease);
+}
+:where(.odds-bar-no) {
+  background: var(--no);
+  transition: width 400ms var(--ease);
+}
+
+/* ─── Live Ticker ────────────────────────────── */
+
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+:where(.ticker-strip) {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  animation: ticker-scroll 40s linear infinite;
+  will-change: transform;
+}
+:where(.ticker-strip):hover {
+  animation-play-state: paused;
+}
+
+:where(.pulse-dot) {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gain);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.4);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 0 4px rgba(5, 150, 105, 0);
+  }
+}
+
+/* ─── Trading Stat Card ──────────────────────── */
+
+:where(.stat-trading) {
+  position: relative;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  border: 1px solid transparent;
+  overflow: hidden;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+:where(.stat-trading):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+:where(.stat-trading-accent) {
+  background: linear-gradient(
+    135deg,
+    rgba(5, 150, 105, 0.06) 0%,
+    rgba(5, 150, 105, 0.02) 100%
+  );
+  border-color: rgba(5, 150, 105, 0.12);
+}
+:where(.stat-trading-gain) {
+  background: linear-gradient(
+    135deg,
+    rgba(5, 150, 105, 0.06) 0%,
+    rgba(5, 150, 105, 0.02) 100%
+  );
+  border-color: rgba(5, 150, 105, 0.12);
+}
+:where(.stat-trading-loss) {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.06) 0%,
+    rgba(239, 68, 68, 0.02) 100%
+  );
+  border-color: rgba(239, 68, 68, 0.12);
+}
+:where(.stat-trading-warn) {
+  background: linear-gradient(
+    135deg,
+    rgba(217, 119, 6, 0.06) 0%,
+    rgba(217, 119, 6, 0.02) 100%
+  );
+  border-color: rgba(217, 119, 6, 0.12);
+}
+:where(.stat-trading-gold) {
+  background: linear-gradient(
+    135deg,
+    rgba(217, 119, 6, 0.06) 0%,
+    rgba(217, 119, 6, 0.02) 100%
+  );
+  border-color: rgba(217, 119, 6, 0.12);
+}
+:where(.stat-trading-neutral) {
+  background: linear-gradient(
+    135deg,
+    rgba(100, 116, 139, 0.06) 0%,
+    rgba(100, 116, 139, 0.02) 100%
+  );
+  border-color: rgba(100, 116, 139, 0.12);
+}
+
+/* Quick action pill */
+:where(.action-pill) {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  border-radius: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: all 0.15s ease;
+  text-decoration: none;
+  color: inherit;
+}
+:where(.action-pill):hover {
+  border-color: var(--accent);
+  background: linear-gradient(
+    135deg,
+    rgba(5, 150, 105, 0.04) 0%,
+    transparent 100%
+  );
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.08);
+}
+:where(.action-pill-icon) {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
