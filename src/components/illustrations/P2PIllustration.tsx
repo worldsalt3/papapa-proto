@@ -47,10 +47,10 @@ export default function P2PIllustration({
         cy="40"
         r="10"
         fill="#d97706"
-        opacity="0.08"
+        fillOpacity={0.08}
         stroke="#d97706"
         strokeWidth="1"
-        opacity="0.2"
+        strokeOpacity={0.2}
       />
       <text x="55" y="44" fontSize="10" fontWeight="600" fill="#d97706">
         ₦
