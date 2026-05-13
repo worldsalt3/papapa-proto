@@ -14,10 +14,10 @@ export default function EscrowIllustration({
       <path
         d="M60 10 L95 28 V60 C95 85 75 105 60 112 C45 105 25 85 25 60 V28 Z"
         fill="#059669"
-        opacity="0.06"
+        fillOpacity={0.06}
         stroke="#059669"
         strokeWidth="1.5"
-        opacity="0.3"
+        strokeOpacity={0.3}
       />
       <path
         d="M60 20 L88 34 V58 C88 79 71 96 60 102 C49 96 32 79 32 58 V34 Z"
