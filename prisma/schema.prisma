@@ -1,0 +1,432 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── User & Auth ───────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  username       String    @unique
+  email          String    @unique
+  passwordHash   String
+  phone          String?
+  firstName      String
+  lastName       String
+  avatarUrl      String?
+  bio            String?
+  isVerified     Boolean   @default(false)
+  kycStatus      KycStatus @default(PENDING)
+  role           Role      @default(USER)
+  balance        Float     @default(0)
+  escrowBalance  Float     @default(0)
+
+  // Reputation
+  totalWagers    Int       @default(0)
+  wagersWon      Int       @default(0)
+  wagersLost     Int       @default(0)
+  disputesRaised Int       @default(0)
+  disputesLost   Int       @default(0)
+  reputationScore Float   @default(50) // 0-100 scale
+
+  // Relations
+  wagersCreated    Wager[]           @relation("WagerCreator")
+  wagerParticipations WagerParticipant[]
+  deposits         Transaction[]     @relation("UserTransactions")
+  notifications    Notification[]
+  disputesCreated  Dispute[]         @relation("DisputeCreator")
+  disputeVotes     DisputeVote[]
+  poolMemberships  PoolMember[]
+  contestEntries   ContestEntry[]
+  marketPositions  MarketPosition[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ─── Wagers (Direct Challenges) ───────────────────────────
+
+model Wager {
+  id            String       @id @default(cuid())
+  type          WagerType
+  title         String
+  description   String
+  category      String       // e.g. "football", "politics", "entertainment"
+  amount        Float
+  odds          String?      // e.g. "1:1", "2:1" — user-defined
+  status        WagerStatus  @default(PENDING)
+  visibility    Visibility   @default(PUBLIC)
+
+  // Outcome
+  outcome       String?      // The verified result
+  settlementNote String?
+
+  // Event data
+  eventDate     DateTime?
+  expiresAt     DateTime?
+  resolvedAt    DateTime?
+
+  // Creator
+  creatorId     String
+  creator       User         @relation("WagerCreator", fields: [creatorId], references: [id])
+
+  // Relations
+  participants  WagerParticipant[]
+  escrowHolds   EscrowHold[]
+  disputes      Dispute[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WagerParticipant {
+  id         String            @id @default(cuid())
+  wagerId    String
+  wager      Wager             @relation(fields: [wagerId], references: [id])
+  userId     String
+  user       User              @relation(fields: [userId], references: [id])
+  side       String            // e.g. "for", "against", or custom label
+  amount     Float
+  status     ParticipantStatus @default(PENDING)
+  payout     Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([wagerId, userId])
+}
+
+// ─── Group Pools ──────────────────────────────────────────
+
+model Pool {
+  id            String      @id @default(cuid())
+  title         String
+  description   String
+  category      String
+  totalAmount   Float       @default(0)
+  status        WagerStatus @default(PENDING)
+  outcome       String?
+  eventDate     DateTime?
+  expiresAt     DateTime?
+  resolvedAt    DateTime?
+
+  members       PoolMember[]
+  escrowHolds   EscrowHold[]
+  disputes      Dispute[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PoolMember {
+  id       String @id @default(cuid())
+  poolId   String
+  pool     Pool   @relation(fields: [poolId], references: [id])
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  side     String
+  amount   Float
+  payout   Float?
+
+  createdAt DateTime @default(now())
+
+  @@unique([poolId, userId])
+}
+
+// ─── Community Markets ────────────────────────────────────
+
+model Market {
+  id            String       @id @default(cuid())
+  title         String       // e.g. "Will Wizkid drop an album in Q3?"
+  description   String
+  category      String
+  status        MarketStatus @default(PENDING)
+  outcome       String?      // "YES" or "NO"
+  totalYesAmount Float       @default(0)
+  totalNoAmount  Float       @default(0)
+  expiresAt     DateTime
+  resolvedAt    DateTime?
+  creatorId     String
+
+  positions     MarketPosition[]
+  escrowHolds   EscrowHold[]
+  disputes      Dispute[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MarketPosition {
+  id       String @id @default(cuid())
+  marketId String
+  market   Market @relation(fields: [marketId], references: [id])
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  side     String // "YES" or "NO"
+  amount   Float
+  payout   Float?
+
+  createdAt DateTime @default(now())
+
+  @@unique([marketId, userId])
+}
+
+// ─── Head-to-Head Prediction Contests ─────────────────────
+
+model Contest {
+  id            String        @id @default(cuid())
+  title         String
+  description   String
+  category      String
+  entryFee      Float
+  prizePool     Float         @default(0)
+  status        WagerStatus   @default(PENDING)
+  startsAt      DateTime
+  endsAt        DateTime
+  resolvedAt    DateTime?
+
+  events        ContestEvent[]
+  entries       ContestEntry[]
+  escrowHolds   EscrowHold[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContestEvent {
+  id          String @id @default(cuid())
+  contestId   String
+  contest     Contest @relation(fields: [contestId], references: [id])
+  title       String  // e.g. "Arsenal vs Chelsea"
+  actualResult String?
+
+  predictions ContestPrediction[]
+
+  createdAt DateTime @default(now())
+}
+
+model ContestEntry {
+  id        String @id @default(cuid())
+  contestId String
+  contest   Contest @relation(fields: [contestId], references: [id])
+  userId    String
+  user      User   @relation(fields: [userId], references: [id])
+  score     Int    @default(0)
+  rank      Int?
+  payout    Float?
+
+  predictions ContestPrediction[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([contestId, userId])
+}
+
+model ContestPrediction {
+  id             String       @id @default(cuid())
+  entryId        String
+  entry          ContestEntry @relation(fields: [entryId], references: [id])
+  eventId        String
+  event          ContestEvent @relation(fields: [eventId], references: [id])
+  predictedResult String
+  isCorrect      Boolean?
+
+  createdAt DateTime @default(now())
+
+  @@unique([entryId, eventId])
+}
+
+// ─── Escrow & Transactions ────────────────────────────────
+
+model EscrowHold {
+  id        String     @id @default(cuid())
+  amount    Float
+  status    EscrowStatus @default(HELD)
+
+  // Polymorphic: one of these will be set
+  wagerId   String?
+  wager     Wager?     @relation(fields: [wagerId], references: [id])
+  poolId    String?
+  pool      Pool?      @relation(fields: [poolId], references: [id])
+  marketId  String?
+  market    Market?    @relation(fields: [marketId], references: [id])
+  contestId String?
+  contest   Contest?   @relation(fields: [contestId], references: [id])
+
+  createdAt DateTime @default(now())
+  releasedAt DateTime?
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation("UserTransactions", fields: [userId], references: [id])
+  type        TransactionType
+  amount      Float
+  reference   String?         @unique
+  description String?
+  status      PaymentStatus   @default(PENDING)
+  metadata    String?         // JSON string for extra data
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Dispute Resolution ───────────────────────────────────
+
+model Dispute {
+  id          String        @id @default(cuid())
+  reason      String
+  evidence    String?
+  status      DisputeStatus @default(OPEN)
+  resolution  String?
+
+  creatorId   String
+  creator     User          @relation("DisputeCreator", fields: [creatorId], references: [id])
+
+  // Polymorphic
+  wagerId     String?
+  wager       Wager?        @relation(fields: [wagerId], references: [id])
+  poolId      String?
+  pool        Pool?         @relation(fields: [poolId], references: [id])
+  marketId    String?
+  market      Market?       @relation(fields: [marketId], references: [id])
+
+  votes       DisputeVote[]
+
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+}
+
+model DisputeVote {
+  id        String @id @default(cuid())
+  disputeId String
+  dispute   Dispute @relation(fields: [disputeId], references: [id])
+  voterId   String
+  voter     User   @relation(fields: [voterId], references: [id])
+  side      String // "creator" or "opponent"
+  reason    String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([disputeId, voterId])
+}
+
+// ─── Notifications ────────────────────────────────────────
+
+model Notification {
+  id      String  @id @default(cuid())
+  userId  String
+  user    User    @relation(fields: [userId], references: [id])
+  type    String
+  title   String
+  message String
+  read    Boolean @default(false)
+  link    String?
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Newsletter ───────────────────────────────────────────
+
+model NewsletterSubscriber {
+  id    String @id @default(cuid())
+  email String @unique
+
+  createdAt DateTime @default(now())
+}
+
+// ─── Enums ────────────────────────────────────────────────
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum KycStatus {
+  PENDING
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+enum WagerType {
+  DIRECT_CHALLENGE
+  GROUP_POOL
+  COMMUNITY_MARKET
+  PREDICTION_CONTEST
+}
+
+enum WagerStatus {
+  PENDING
+  ACTIVE
+  SETTLED
+  CANCELLED
+  EXPIRED
+  DISPUTED
+}
+
+enum MarketStatus {
+  PENDING
+  ACTIVE
+  CLOSED
+  SETTLED
+  DISPUTED
+}
+
+enum ParticipantStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  SETTLED
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+  FRIENDS_ONLY
+}
+
+enum EscrowStatus {
+  HELD
+  RELEASED
+  REFUNDED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  WAGER_STAKE
+  WAGER_PAYOUT
+  COMMISSION
+  REFUND
+  CONTEST_ENTRY
+  CONTEST_PAYOUT
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum DisputeStatus {
+  OPEN
+  COMMUNITY_REVIEW
+  ADMIN_REVIEW
+  RESOLVED
+  DISMISSED
+}
